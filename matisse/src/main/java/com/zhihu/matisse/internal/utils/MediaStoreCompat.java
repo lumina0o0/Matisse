@@ -16,6 +16,7 @@
 package com.zhihu.matisse.internal.utils;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -24,6 +25,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+
 import androidx.fragment.app.Fragment;
 import androidx.core.content.FileProvider;
 import androidx.core.os.EnvironmentCompat;
@@ -42,9 +44,9 @@ public class MediaStoreCompat {
 
     private final WeakReference<Activity> mContext;
     private final WeakReference<Fragment> mFragment;
-    private       CaptureStrategy         mCaptureStrategy;
-    private       Uri                     mCurrentPhotoUri;
-    private       String                  mCurrentPhotoPath;
+    private CaptureStrategy mCaptureStrategy;
+    private Uri mCurrentPhotoUri;
+    private String mCurrentPhotoPath;
 
     public MediaStoreCompat(Activity activity) {
         mContext = new WeakReference<>(activity);
@@ -74,17 +76,23 @@ public class MediaStoreCompat {
     public void dispatchCaptureIntent(Context context, int requestCode) {
         Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (captureIntent.resolveActivity(context.getPackageManager()) != null) {
-            File photoFile = null;
-            try {
-                photoFile = createImageFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            if (photoFile != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                mCurrentPhotoUri = createImageUri();
+                mCurrentPhotoPath = mCurrentPhotoUri.getPath();
+            } else {
+                File photoFile = null;
+                try {
+                    photoFile = createImageFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 mCurrentPhotoPath = photoFile.getAbsolutePath();
+
                 mCurrentPhotoUri = FileProvider.getUriForFile(mContext.get(),
                         mCaptureStrategy.authority, photoFile);
+            }
+
+            if (mCurrentPhotoUri != null) {
                 captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mCurrentPhotoUri);
                 captureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
@@ -133,6 +141,21 @@ public class MediaStoreCompat {
         }
 
         return tempFile;
+    }
+
+    //新增方法
+
+    /**
+     * 创建图片地址uri,用于保存拍照后的照片 Android 10以后使用这种方法
+     */
+    private Uri createImageUri() {
+        String status = Environment.getExternalStorageState();
+        // 判断是否有SD卡,优先使用SD卡存储,当没有SD卡时使用手机存储
+        if (status.equals(Environment.MEDIA_MOUNTED)) {
+            return mContext.get().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, new ContentValues());
+        } else {
+            return mContext.get().getContentResolver().insert(MediaStore.Images.Media.INTERNAL_CONTENT_URI, new ContentValues());
+        }
     }
 
     public Uri getCurrentPhotoUri() {

@@ -21,10 +21,12 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,10 +34,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.squareup.picasso.Picasso;
 import com.tbruyelle.rxpermissions2.RxPermissions;
 import com.zhihu.matisse.Matisse;
 import com.zhihu.matisse.MimeType;
-import com.zhihu.matisse.engine.impl.GlideEngine;
 import com.zhihu.matisse.engine.impl.PicassoEngine;
 import com.zhihu.matisse.filter.Filter;
 import com.zhihu.matisse.internal.entity.CaptureStrategy;
@@ -93,7 +95,7 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
                                 getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
                         .restrictOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
                         .thumbnailScale(0.85f)
-                        .imageEngine(new GlideEngine())
+                        .imageEngine(new PicassoEngine())
                         .setOnSelectedListener((uriList, pathList) -> {
                             Log.e("onSelected", "onSelected: pathList=" + pathList);
                         })
@@ -115,6 +117,8 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
                         .maxSelectable(9)
                         .originalEnable(true)
                         .maxOriginalSize(10)
+                        .captureStrategy(
+                                new CaptureStrategy(true, "com.zhihu.matisse.sample.fileprovider", "test"))
                         .imageEngine(new PicassoEngine())
                         .forResult(REQUEST_CODE_CHOOSE);
                 break;
@@ -128,7 +132,7 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
                                 getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
                         .restrictOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
                         .thumbnailScale(0.85f)
-                        .imageEngine(new GlideEngine())
+                        .imageEngine(new PicassoEngine())
                         .showSingleMediaType(true)
                         .originalEnable(true)
                         .maxOriginalSize(10)
@@ -174,6 +178,11 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
 
             holder.mUri.setAlpha(position % 2 == 0 ? 1.0f : 0.54f);
             holder.mPath.setAlpha(position % 2 == 0 ? 1.0f : 0.54f);
+            if (mUris.get(position) != null && !TextUtils.isEmpty(mUris.get(position).getPath())){
+                Picasso.get().load(mUris.get(position)).into(holder.image);
+            } else if (!TextUtils.isEmpty(mPaths.get(position))){
+                Picasso.get().load(mPaths.get(position)).into(holder.image);
+            }
         }
 
         @Override
@@ -185,11 +194,13 @@ public class SampleActivity extends AppCompatActivity implements View.OnClickLis
 
             private TextView mUri;
             private TextView mPath;
+            private ImageView image;
 
             UriViewHolder(View contentView) {
                 super(contentView);
                 mUri = (TextView) contentView.findViewById(R.id.uri);
                 mPath = (TextView) contentView.findViewById(R.id.path);
+                image = contentView.findViewById(R.id.image_view);
             }
         }
     }
